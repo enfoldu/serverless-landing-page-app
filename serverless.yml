@@ -15,7 +15,7 @@ provider:
   runtime: nodejs4.3
   stage: ${opt:stage, 'dev'}
   ## Optional
-  # profile: mojaveDev
+  # profile: customProfile
 
 resources:
   Conditions:
@@ -185,7 +185,7 @@ resources:
                     - - "www"
                       - ${self:provider.stage}
                       - ${self:custom.domain.name}
-          ## Since the Single Page App is taking care of the routing we need to make sure ever path is served with index.html
+          ## Since the Landing Page App is taking care of the routing we need to make sure ever path is served with index.html
           ## The only exception are files that actually exist e.h. app.js, reset.css
           DefaultCacheBehavior:
             AllowedMethods:
