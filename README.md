@@ -17,7 +17,7 @@ The `serverless-single-page-app-plugin` in this example requires the Serverless 
 
 ## Setup
 
-Replace the name under domain in `serverless.yaml` which you can find inside the `custom` section. There is a placeholder text `your_domain_name.com`. Use only root a domain:
+Replace the name under domain in `serverless.yaml` which you can find inside the `custom` section. There is a placeholder text `your_domain_name.com`. Use only a root domain:
 
 [Accepted]
 - your_domain_name.com
@@ -65,7 +65,7 @@ serverless deploy --stage prod
 
 Note: all resources will have "prod" appended to it.
 
-Now you must accept the ACM Certificate to complete the deployment. Login to one of the email address under the #Setup section of this READEME and click the link provided in the email.
+Now you must accept the ACM Certificate to complete the deployment. Login to one of the email address under the #Setup section of this README and click the link provided in the email.
 
 The expected result should be similar to:
 
@@ -107,18 +107,10 @@ Serverless: Successfully synced to the S3 bucket
 
 Hint: The plugin is simply running the AWS CLI command: `aws S3 sync app/ s3://yourBucketName123/`
 
-Now you just need to figure out the deployed URL. You can use the AWS Console UI or run
+Now you just need to go to your domain. You can use the AWS Console UI or run to view it
 
 ```bash
 sls domainInfo
 ```
-
-The expected result should be similar to
-
-```bash
-Serverless: Web App Domain: dyj5gf0t6nqke.cloudfront.net
-```
-
-Visit the printed domain domain and navigate on the web site. It should automatically redirect you to HTTPS and visiting <yourURL>/about will not result in an error with the status code 404, but rather serves the `index.html` and renders the about page.
 
 - Built on <a href="https://github.com/serverless/examples/tree/master/aws-node-single-page-app-via-cloudfront">Single Page Application</a>
