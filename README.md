@@ -13,7 +13,8 @@ Any traffic to www is redirected to the root domain. So www.your_domain_name.com
 
 ## Prerequisite
 
-The `serverless-single-page-app-plugin` in this example requires the Serverless Framework version 1.2.0 or higher and the AWS Command Line Interface. Learn more [here](http://docs.aws.amazon.com/cli/latest/userguide/installing.html) on how to install the AWS Command Line Interface.
+- `aws-cli`
+- Route 53 hosted zone setup for your_domain_name.com
 
 ## Setup
 
@@ -26,14 +27,6 @@ Replace the name under domain in `serverless.yaml` which you can find inside the
 [Incorrect]
 - sub.your_domain_name.com
 - www.your_domain_name.org
-
-Since this plugin uses a custom Serverless plugin you need to setup the `node_modules` by running:
-
-```bash
-npm install
-```
-
-The `serverless-single-page-app-plugin` plugin in this example is there to simplify the experience using this example. It's not necessary to understand the plugin to deploy your Landing Page Application.
 
 You must have an email for the domain you use in order to accept the ACM certificate (SSL Cert). Amazon will you email you at all of these addresses to prove ownership of the domain:
 
@@ -52,7 +45,7 @@ In order to deploy the Landing Page Application you need to setup the infrastruc
 For Development:
 
 ```bash
-serverless deploy
+sls deploy
 ```
 Note: all resources will have "dev" appended to it.
 
@@ -60,7 +53,7 @@ Note: all resources will have "dev" appended to it.
 For Production:
 
 ```bash
-serverless deploy --stage prod
+sls deploy --stage prod
 ```
 
 Note: all resources will have "prod" appended to it.
@@ -94,23 +87,20 @@ functions:
 After this step your S3 bucket and CloudFront distribution is setup. Now you need to upload your static file e.g. `index.html` and `app.js` to S3. You can do this by running
 
 ```bash
-serverless syncToS3
+aws s3 sync app/ s3://yourBucketName123
 ```
 
 The expected result should be similar to
 
 ```bash
-Serverless: upload: app/index.html to s3://yourBucketName123/index.html
-Serverless: upload: app/app.js to s3://yourBucketName123/app.js
-Serverless: Successfully synced to the S3 bucket
+upload: app/index.html to s3://yourBucketName123/index.html
+upload: app/app.js to s3://yourBucketName123/app.js
 ```
-
-Hint: The plugin is simply running the AWS CLI command: `aws S3 sync app/ s3://yourBucketName123/`
 
 Now you just need to go to your domain. You can use the AWS Console UI or run to view it
 
 ```bash
-sls domainInfo
+sls info --verbose
 ```
 
 - Built on <a href="https://github.com/serverless/examples/tree/master/aws-node-single-page-app-via-cloudfront">Single Page Application</a>

@@ -2,10 +2,7 @@
   "name": "serverless-landing-page-app",
   "version": "1.0.0",
   "description": "Deploy a Landing Page Application with Serverless",
-  "repository": "<replace>",
-  "author": "",
-  "license": "MIT",
-  "devDependencies": {
-    "serverless-single-page-app-plugin": "file:./serverless-single-page-app-plugin"
-  }
+  "repository": "https://github.com/enfoldu/serverless-landing-page-app",
+  "author": "Jordan Cannon",
+  "license": "MIT"
 }
