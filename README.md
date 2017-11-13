@@ -18,7 +18,7 @@ Any traffic to www is redirected to the root domain. So www.your_domain_name.com
 
 ## Setup
 
-Rename `env.json.example` to `env.json` and replace your_domain_name. For name under domain use only a root domain:
+Rename `env.json.example` to `env.json` and replace your_domain_name. For the "name" value under "domain" use only a root domain:
 
 [Accepted]
 - your_domain_name.com
