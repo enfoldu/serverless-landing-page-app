@@ -12,8 +12,6 @@ provider:
   runtime: nodejs4.3
   stage: ${file(env.json):env.stage}
   profile: ${file(env.json):env.profile}
-#  stage: ${opt:stage, ${file(env.json):env.stage}}
-#  profile: ${opt:stage, ${file(env.json):env.profile}}
 
 resources:
   Conditions:
