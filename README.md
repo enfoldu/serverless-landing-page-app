@@ -46,7 +46,7 @@ In order to deploy the Landing Page Application you need to setup the infrastruc
 sls deploy
 ```
 
-Note: all resources will have the "stage" value appended to it (e.g dev.your_domain_name.com).
+Note: all resources will have the "stage" value appended to it excluding "prod" (e.g dev.your_domain_name.com).
 
 Now you must accept the ACM Certificate to complete the deployment. Login to one of the email address under the #Setup section of this README and click the link provided in the email.
 
