@@ -14,11 +14,11 @@ Any traffic to www is redirected to the root domain. So www.your_domain_name.com
 ## Prerequisite
 
 - `aws-cli`
-- Route 53 hosted zone setup for your_domain_name.com
+- Route 53 hosted zone created for your_domain_name.com
 
 ## Setup
 
-Replace the name under domain in `serverless.yaml` which you can find inside the `custom` section. There is a placeholder text `your_domain_name.com`. Use only a root domain:
+Rename `env.json.example` to `env.json` and replace your_domain_name. For name under domain use only a root domain:
 
 [Accepted]
 - your_domain_name.com
@@ -28,7 +28,7 @@ Replace the name under domain in `serverless.yaml` which you can find inside the
 - sub.your_domain_name.com
 - www.your_domain_name.org
 
-You must have an email for the domain you use in order to accept the ACM certificate (SSL Cert). Amazon will you email you at all of these addresses to prove ownership of the domain:
+You must have an email for the domain you use in order to accept the ACM certificate (SSL Cert). Amazon will email you at all of these addresses to prove ownership of the domain:
 
 - administrator@your_domain_name
 - hostmaster@your_domain_name
@@ -42,25 +42,15 @@ Warning: Whenever you making changes to CloudFront resource in `serverless.yml` 
 
 In order to deploy the Landing Page Application you need to setup the infrastructure first.
 
-For Development:
-
 ```bash
 sls deploy
 ```
-Note: all resources will have "dev" appended to it.
 
-
-For Production:
-
-```bash
-sls deploy --stage prod
-```
-
-Note: all resources will have "prod" appended to it.
+Note: all resources will have the "stage" value appended to it (e.g dev.your_domain_name.com).
 
 Now you must accept the ACM Certificate to complete the deployment. Login to one of the email address under the #Setup section of this README and click the link provided in the email.
 
-The expected result should be similar to:
+Afterwards the expected result should be similar to:
 
 ```bash
 Serverless: Packaging service...
