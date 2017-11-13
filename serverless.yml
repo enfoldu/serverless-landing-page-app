@@ -473,27 +473,13 @@ resources:
 
 
 
-#  Outputs:
-#    Domain:
-#      Value: ${self:custom.domain.name}
-#    S3NameRoot:
-#      Value:
-#        Ref: S3BucketRoot
-#    S3DomainRoot:
-#      Value:
-#        'Fn::GetAtt': [ S3BucketRoot, DomainName ]
-#    S3UrlRoot:
-#      Value:
-#        'Fn::GetAtt': [ S3BucketRoot, WebsiteURL ]
-#    S3NameSub:
-#      Value:
-#        Ref: S3BucketSub
-#    S3DomainSub:
-#      Value:
-#        'Fn::GetAtt': [ S3BucketSub, DomainName ]
-#    S3UrlSub:
-#      Value:
-#        'Fn::GetAtt': [ S3BucketSub, WebsiteURL ]
-#    CloudFrontDistributionRootOutput:
-#      Value:
-#        'Fn::GetAtt': [ CloudFrontDistributionRoot, DomainName ]
+  Outputs:
+    Domain:
+      Value:
+        Fn::If:
+          - isProd
+          - ${self:custom.domain.name}
+          - Fn::Join:
+              - "."
+              - - ${self:provider.stage}
+                - ${self:custom.domain.name}
