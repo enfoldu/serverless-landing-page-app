@@ -77,14 +77,14 @@ functions:
 After this step your S3 bucket and CloudFront distribution is setup. Now you need to upload your static file e.g. `index.html` and `app.js` to S3. You can do this by running
 
 ```bash
-aws s3 sync app/ s3://yourBucketName123
+aws s3 sync app/ s3://your_domain_name-com-stage
 ```
 
 The expected result should be similar to
 
 ```bash
-upload: app/index.html to s3://yourBucketName123/index.html
-upload: app/app.js to s3://yourBucketName123/app.js
+upload: app/index.html to s3://your_domain_name-com-stage/index.html
+upload: app/app.js to s3://your_domain_name-com-stage/app.js
 ```
 
 Now you just need to go to your domain. You can use the AWS Console UI or run to view it
