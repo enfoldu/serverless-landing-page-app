@@ -1,8 +1,8 @@
 {
-  "name": "serverless-landing-page-app",
+  "name": "serverless-website",
   "version": "1.0.0",
-  "description": "Deploy a Landing Page Application with Serverless",
-  "repository": "https://github.com/enfoldu/serverless-landing-page-app",
+  "description": "Deploy a serverless static website",
+  "repository": "",
   "author": "Jordan Cannon",
   "license": "MIT"
 }

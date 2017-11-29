@@ -1,276 +1,78 @@
-service: ${file(env.json):env.service}
+service: ${file(env.json):domain.name}
 
 frameworkVersion: ">=1.2.0 <2.0.0"
 
+plugins:
+  - serverless-s3-sync
+
 custom:
   ## Root/apex/naked domain name only (ex: google.com, yahoo.net, wikipedia.org)
-  domain:
-    name: ${file(env.json):domain.name}
+  domain: ${file(env.json):domain.name}.${file(env.json):domain.suffix}
+#  stack: ${self:custom.domain}-${self:provider.stage}
+  s3Sync:
+    - bucketName: ${self:custom.domain}
+#      bucketPrefix: assets/ # optional
+      localDir: ${file(env.json):appDirectory}
 
 provider:
   name: aws
-  runtime: nodejs6.10
-  stage: ${file(env.json):env.stage}
-  profile: ${file(env.json):env.profile}
+  runtime: ${file(env.json):runtime}
+  stage: ${file(env.json):stage}
+  profile: ${file(env.json):profile}
 
 resources:
-  Conditions:
-    isProd:
-      Fn::Equals:
-        - ${self:provider.stage}
-        - prod
-    CreateProdResources:
-      Fn::Equals:
-        - ${self:provider.stage}
-        - prod
-    CreateDevResources:
-      Fn::Equals:
-        - ${self:provider.stage}
-        - dev
   Resources:
-    ## #################
-    ##
-    ## [ S3 ] Root
-    ##
-    ## #################
-    S3BucketRoot:
+    ## ################################################ [ S3 ]
+    S3Bucket:
       Type: AWS::S3::Bucket
       Properties:
-        BucketName:
-          Fn::Join:
-            - "-"
-            - - Fn::Select:
-                  - 0
-                  - Fn::Split:
-                      - "."
-                      - ${self:custom.domain.name}
-              - Fn::Select:
-                  - 1
-                  - Fn::Split:
-                      - "."
-                      - ${self:custom.domain.name}
-              - ${self:provider.stage}
-        AccessControl: PublicRead
-        WebsiteConfiguration:
-          IndexDocument: index.html
-          ErrorDocument: index.html
-    ## S3: Root - Specifying the policies to make sure all files inside the Bucket are avaialble to CloudFront
-    S3BucketPolicyRoot:
+        BucketName: ${self:custom.domain}
+        AccessControl: Private
+    S3BucketPolicy:
       Type: AWS::S3::BucketPolicy
       Properties:
         Bucket:
-          Ref: S3BucketRoot
+          Ref: S3Bucket
         PolicyDocument:
           Statement:
-            - Sid: PublicReadGetObject
+            - Sid: "Grant a CloudFront Origin Identity access to support private content"
               Effect: Allow
-              Principal: "*"
+              Principal:
+                CanonicalUser:
+                  Fn::GetAtt: [ CloudFrontOriginAccessIdentity, S3CanonicalUserId ]
               Action:
               - s3:GetObject
               Resource:
                 Fn::Join:
                   - ""
                   - - "arn:aws:s3:::"
-                    - Ref: S3BucketRoot
+                    - Ref: S3Bucket
                     - "/*"
-    ## #################
-    ##
-    ## [ S3 ] Sub
-    ##
-    ## #################
-    S3BucketSub:
-      Type: AWS::S3::Bucket
-      Properties:
-        BucketName:
-          Fn::Join:
-            - "-"
-            - - "www"
-              - Fn::Select:
-                  - 0
-                  - Fn::Split:
-                      - "."
-                      - ${self:custom.domain.name}
-              - Fn::Select:
-                  - 1
-                  - Fn::Split:
-                      - "."
-                      - ${self:custom.domain.name}
-              - ${self:provider.stage}
-        AccessControl: PublicRead
-        WebsiteConfiguration:
-          RedirectAllRequestsTo:
-            HostName:
-              Fn::If:
-                - isProd
-                - ${self:custom.domain.name}
-                - Fn::Join:
-                    - "."
-                    - - ${self:provider.stage}
-                      - ${self:custom.domain.name}
-            Protocol:
-              Fn::If:
-                - isProd
-                - 'https'
-                - 'http'
-    ## #################
-    ##
-    ## [ CF ] Root : Dev
-    ##
-    ## #################
-    # CloudFront: Root - Specifying the CloudFront Distribution to server your Web Application
-    CloudFrontDistributionRootDev:
+    ## ################################################ [ CloudFront ]
+    CloudFrontDistribution:
       Type: AWS::CloudFront::Distribution
-      Condition: CreateDevResources
       Properties:
         DistributionConfig:
           Origins:
             - DomainName:
-                Fn::GetAtt: [ S3BucketRoot, DomainName ]
+                Fn::GetAtt: [ S3Bucket, DomainName ]
               ## An identifier for the origin which must be unique within the distribution
-              Id: Root
-              CustomOriginConfig:
-                HTTPPort: 80
-                HTTPSPort: 443
-                OriginProtocolPolicy: http-only
+              Id:
+                Ref: S3Bucket
+              S3OriginConfig:
+                OriginAccessIdentity:
+                  Fn::Join:
+                    - ""
+                    - - "origin-access-identity/cloudfront/"
+                      - Ref: CloudFrontOriginAccessIdentity
           Enabled: 'true'
+          DefaultRootObject: "index.html"
           Aliases:
-           - Fn::If:
-              - isProd
-              - ${self:custom.domain.name}
-              - Fn::Join:
-                  - "."
-                  - - ${self:provider.stage}
-                    - ${self:custom.domain.name}
-          DefaultRootObject: index.html
-          ## Since the Single Page App is taking care of the routing we need to make sure every path is served with index.html
-          ## The only exception are files that actually exist e.h. app.js, reset.css
-          CustomErrorResponses:
-            - ErrorCode: 404
-              ResponseCode: 200
-              ResponsePagePath: /index.html
-          DefaultCacheBehavior:
-            AllowedMethods:
-              - DELETE
-              - GET
-              - HEAD
-              - OPTIONS
-              - PATCH
-              - POST
-              - PUT
-            ## The origin id defined above
-            TargetOriginId: Root
-            ## Defining if and how the QueryString and Cookies are forwarded to the origin which in this case is S3
-            ForwardedValues:
-              QueryString: 'false'
-              Cookies:
-                Forward: none
-            ## The protocol that users can use to access the files in the origin. To allow HTTP use `allow-all`
-            ViewerProtocolPolicy: allow-all
-    ## #################
-    ##
-    ## [ CF ] Root
-    ##
-    ## #################
-    # CloudFront: Root - Specifying the CloudFront Distribution to server your Web Application
-    CloudFrontDistributionRoot:
-      Type: AWS::CloudFront::Distribution
-      Condition: CreateProdResources
-      Properties:
-        DistributionConfig:
-          Origins:
-            - DomainName:
-                Fn::GetAtt: [ S3BucketRoot, DomainName ]
-              ## An identifier for the origin which must be unique within the distribution
-              Id: Root
-              CustomOriginConfig:
-                HTTPPort: 80
-                HTTPSPort: 443
-                OriginProtocolPolicy: https-only
-              ## In case you want to restrict the bucket access use S3OriginConfig and remove CustomOriginConfig
-              # S3OriginConfig:
-              #   OriginAccessIdentity: origin-access-identity/cloudfront/E127EXAMPLE51Z
-          Enabled: 'true'
-          Aliases:
-           - Fn::If:
-              - isProd
-              - ${self:custom.domain.name}
-              - Fn::Join:
-                  - "."
-                  - - ${self:provider.stage}
-                    - ${self:custom.domain.name}
-          DefaultRootObject: index.html
-          ## Since the Single Page App is taking care of the routing we need to make sure every path is served with index.html
-          ## The only exception are files that actually exist e.h. app.js, reset.css
-          CustomErrorResponses:
-            - ErrorCode: 404
-              ResponseCode: 200
-              ResponsePagePath: /index.html
-          DefaultCacheBehavior:
-            AllowedMethods:
-              - DELETE
-              - GET
-              - HEAD
-              - OPTIONS
-              - PATCH
-              - POST
-              - PUT
-            ## The origin id defined above
-            TargetOriginId: Root
-            ## Defining if and how the QueryString and Cookies are forwarded to the origin which in this case is S3
-            ForwardedValues:
-              QueryString: 'false'
-              Cookies:
-                Forward: none
-            ## The protocol that users can use to access the files in the origin. To allow HTTP use `allow-all`
-            ViewerProtocolPolicy: redirect-to-https
-          ## The certificate to use when viewers use HTTPS to request objects.
-          ViewerCertificate:
-            AcmCertificateArn:
-              Ref: CertificateManagerCertificateRoot
-            SslSupportMethod: 'sni-only'
-            MinimumProtocolVersion: 'TLSv1.1_2016'
-          ## Uncomment the following section in case you want to enable logging for CloudFront requests
-          # Logging:
-          #   IncludeCookies: 'false'
-          #   Bucket: mylogs.s3.amazonaws.com
-          #   Prefix: myprefix
-    ## #################
-    ##
-    ## [ CF ] Sub : Dev
-    ##
-    ## #################
-    ## CloudFront: SubDomain - Specifying the CloudFront Distribution to server your Web Application
-    CloudFrontDistributionSubDev:
-      Type: AWS::CloudFront::Distribution
-      Condition: CreateDevResources
-      Properties:
-        DistributionConfig:
-          Origins:
-            - DomainName:
-                Fn::Select:
-                  - 1
-                  - Fn::Split:
-                      - "//"
-                      - Fn::GetAtt: [ S3BucketSub, WebsiteURL ]
-              ## An identifier for the origin which must be unique within the distribution
-              Id: Sub
-              CustomOriginConfig:
-                HTTPPort: 80
-                HTTPSPort: 443
-                OriginProtocolPolicy: http-only
-          Enabled: 'true'
-          Aliases:
-            - Fn::If:
-                - isProd
-                - Fn::Join:
-                   - "."
-                   - - "www"
-                     - ${self:custom.domain.name}
-                - Fn::Join:
-                    - "."
-                    - - "www"
-                      - ${self:provider.stage}
-                      - ${self:custom.domain.name}
+            - ${self:custom.domain}
+            - Fn::Join:
+                - "."
+                - - "*"
+                  - ${self:custom.domain}
           ## Since the Landing Page App is taking care of the routing we need to make sure ever path is served with index.html
           ## The only exception are files that actually exist e.h. app.js, reset.css
           DefaultCacheBehavior:
@@ -283,64 +85,8 @@ resources:
               - POST
               - PUT
             ## The origin id defined above
-            TargetOriginId: Sub
-            ## Defining if and how the QueryString and Cookies are forwarded to the origin which in this case is S3
-            ForwardedValues:
-              QueryString: 'true'
-              Cookies:
-                Forward: all
-            ## The protocol that users can use to access the files in the origin. To allow HTTP use `allow-all`
-            ViewerProtocolPolicy: allow-all
-    ## #################
-    ##
-    ## [ CF ] Sub
-    ##
-    ## #################
-    ## CloudFront: SubDomain - Specifying the CloudFront Distribution to server your Web Application
-    CloudFrontDistributionSub:
-      Type: AWS::CloudFront::Distribution
-      Condition: CreateProdResources
-      Properties:
-        DistributionConfig:
-          Origins:
-            - DomainName:
-                Fn::Select:
-                  - 1
-                  - Fn::Split:
-                      - "//"
-                      - Fn::GetAtt: [ S3BucketSub, WebsiteURL ]
-              ## An identifier for the origin which must be unique within the distribution
-              Id: Sub
-              CustomOriginConfig:
-                HTTPPort: 80
-                HTTPSPort: 443
-                OriginProtocolPolicy: https-only
-          Enabled: 'true'
-          Aliases:
-            - Fn::If:
-                - isProd
-                - Fn::Join:
-                   - "."
-                   - - "www"
-                     - ${self:custom.domain.name}
-                - Fn::Join:
-                    - "."
-                    - - "www"
-                      - ${self:provider.stage}
-                      - ${self:custom.domain.name}
-          ## Since the Landing Page App is taking care of the routing we need to make sure ever path is served with index.html
-          ## The only exception are files that actually exist e.h. app.js, reset.css
-          DefaultCacheBehavior:
-            AllowedMethods:
-              - DELETE
-              - GET
-              - HEAD
-              - OPTIONS
-              - PATCH
-              - POST
-              - PUT
-            ## The origin id defined above
-            TargetOriginId: Sub
+            TargetOriginId:
+              Ref: S3Bucket
             ## Defining if and how the QueryString and Cookies are forwarded to the origin which in this case is S3
             ForwardedValues:
               QueryString: 'true'
@@ -351,133 +97,55 @@ resources:
           ## The certificate to use when viewers use HTTPS to request objects.
           ViewerCertificate:
             AcmCertificateArn:
-              Ref: CertificateManagerCertificateSub
+              Ref: CertificateManagerCertificate
             SslSupportMethod: 'sni-only'
             MinimumProtocolVersion: 'TLSv1.1_2016'
-    ## #################
-    ##
-    ## [ R53 ] Root
-    ##
-    ## #################
-    Route53RecordSetGroupRoot:
-      Type: AWS::Route53::RecordSetGroup
+    CloudFrontOriginAccessIdentity:
+      Type: "AWS::CloudFront::CloudFrontOriginAccessIdentity"
       Properties:
-        HostedZoneName:
-          Fn::Join:
-            - ""
-            - - ${self:custom.domain.name}
+        CloudFrontOriginAccessIdentityConfig:
+          Comment: 'access-identity'
+    ## ################################################ [ Amazon Certificate Manager ]
+    CertificateManagerCertificate:
+      Type: AWS::CertificateManager::Certificate
+      Properties:
+        DomainName: ${self:custom.domain}
+        ## Include all sub-domains with a wildcard (*.domain.com)
+        SubjectAlternativeNames:
+          - Fn::Join:
               - "."
-        RecordSets:
-            - Name:
-                Fn::If:
-                  - isProd
-                  - Fn::Join:
-                      - ""
-                      - - ${self:custom.domain.name}
-                        - "."
-                  - Fn::Join:
-                      - ""
-                      - - Fn::Join:
-                            - "."
-                            - - ${self:provider.stage}
-                              - ${self:custom.domain.name}
-                        - "."
-              Type: A
-              AliasTarget:
-                HostedZoneId: Z2FDTNDATAQYW2
-                DNSName:
-                  Fn::If:
-                    - isProd
-                    - Fn::GetAtt: [ CloudFrontDistributionRoot, DomainName ]
-                    - Fn::GetAtt: [ CloudFrontDistributionRootDev, DomainName ]
-    ## #################
-    ##
-    ## [ R53 ] Sub
-    ##
-    ## #################
+              - - "*"
+                - ${self:custom.domain}
+    ## ################################################ [ Route 53 ]
     Route53RecordSetGroupSub:
       Type: AWS::Route53::RecordSetGroup
       Properties:
         HostedZoneName:
           Fn::Join:
             - ""
-            - - ${self:custom.domain.name}
+            - - ${self:custom.domain}
               - "."
         RecordSets:
-            - Name:
-                Fn::If:
-                   - isProd
-                   - Fn::Join:
-                       - ""
-                       - - Fn::Join:
-                            - "."
-                            - - "www"
-                              - ${self:custom.domain.name}
-                         - "."
-                   - Fn::Join:
-                       - ""
-                       - - Fn::Join:
-                            - "."
-                            - - "www"
-                              - ${self:provider.stage}
-                              - ${self:custom.domain.name}
-                         - "."
-              Type: A
-              AliasTarget:
-                HostedZoneId: Z2FDTNDATAQYW2
-                DNSName:
-                  Fn::If:
-                    - isProd
-                    - Fn::GetAtt: [ CloudFrontDistributionSub, DomainName ]
-                    - Fn::GetAtt: [ CloudFrontDistributionSubDev, DomainName ]
-    ## #################
-    ##
-    ## [ ACM ] Root
-    ##
-    ## #################
-    CertificateManagerCertificateRoot:
-      Type: AWS::CertificateManager::Certificate
-      Condition: CreateProdResources
-      Properties:
-        DomainName:
-          Fn::If:
-            - isProd
-            - ${self:custom.domain.name}
-            - Fn::Join:
-                - "."
-                - - ${self:provider.stage}
-                  - ${self:custom.domain.name}
-    ## #################
-    ##
-    ## [ ACM ] Sub
-    ##
-    ## #################
-    CertificateManagerCertificateSub:
-      Type: AWS::CertificateManager::Certificate
-      Condition: CreateProdResources
-      Properties:
-        DomainName:
-          Fn::If:
-            - isProd
-            - Fn::Join:
-                - "."
-                - - "www"
-                  - ${self:custom.domain.name}
-            - Fn::Join:
-                - "."
-                - - "www"
-                  - ${self:provider.stage}
-                  - ${self:custom.domain.name}
-
-
-
-  Outputs:
-    Domain:
-      Value:
-        Fn::If:
-          - isProd
-          - ${self:custom.domain.name}
-          - Fn::Join:
-              - "."
-              - - ${self:provider.stage}
-                - ${self:custom.domain.name}
+          - Name:
+              Fn::Join:
+                - ""
+                - - ${self:custom.domain}
+                  - "."
+            Type: A
+            AliasTarget:
+              HostedZoneId: Z2FDTNDATAQYW2
+              DNSName:
+                Fn::GetAtt: [ CloudFrontDistribution, DomainName ]
+          - Name:
+              Fn::Join:
+                - ""
+                - - Fn::Join:
+                      - "."
+                      - - "*"
+                        - ${self:custom.domain}
+                  - "."
+            Type: A
+            AliasTarget:
+              HostedZoneId: Z2FDTNDATAQYW2
+              DNSName:
+                Fn::GetAtt: [ CloudFrontDistribution, DomainName ]

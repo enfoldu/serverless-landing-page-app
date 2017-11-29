@@ -5,9 +5,9 @@ layout: Doc
 -->
 # Landing Page Application
 
-This script builds a complete landing page with everything need, out of the box. All the content is served via HTTPS only. HTTP requests are redirected to HTTPS.
+This script builds a complete landing page with everything need, out of the box. All the content is served via HTTPS only and any HTTP requests are redirected to HTTPS.
 
-S3 in combination with CloudFront, Route 53, and ACM (AWS Certificate Manager). S3 is used to store our static HTML file while CloudFront is responsible for making it available via Amazon's Content Delivery Network. ACM provides the free SSL certificates for your domain. We then use Route 53 to add the proper domains.
+S3 in combination with CloudFront, Route 53, and ACM (AWS Certificate Manager). S3 is used to store our static HTML file while CloudFront is responsible for making it available via Amazon's Content Delivery Network. ACM provides the free SSL certificates for your domain. We then use Route 53 for DNS.
 
 Any traffic to www is redirected to the root domain. So www.your_domain_name.com will redirect to your_domain_name.com.
 
@@ -15,26 +15,18 @@ Any traffic to www is redirected to the root domain. So www.your_domain_name.com
 
 - `aws-cli`
 - Route 53 hosted zone created for your_domain_name.com
+- One of these emails for your domain.
+    - administrator@your_domain_name
+    - hostmaster@your_domain_name
+    - postmaster@your_domain_name
+    - webmaster@your_domain_name
+    - admin@your_domain_name
 
 ## Setup
 
-Rename `env.json.example` to `env.json` and replace your_domain_name. For the "name" value under "domain" use only a root domain:
+`cd` into your project directory and run `npm install --save serverless-s3-sync`
 
-[Accepted]
-- your_domain_name.com
-- your_domain_name.org
-
-[Incorrect]
-- sub.your_domain_name.com
-- www.your_domain_name.org
-
-You must have an email for the domain you use in order to accept the ACM certificate (SSL Cert). Amazon will email you at all of these addresses to prove ownership of the domain:
-
-- administrator@your_domain_name
-- hostmaster@your_domain_name
-- postmaster@your_domain_name
-- webmaster@your_domain_name
-- admin@your_domain_name
+Rename `env.json.example` to `env.json` and replace all variables as needed.
 
 # Deploy
 
@@ -46,9 +38,7 @@ In order to deploy the Landing Page Application you need to setup the infrastruc
 sls deploy
 ```
 
-Note: all resources will have the "stage" value appended to it excluding "prod" (e.g dev.your_domain_name.com).
-
-Now you must accept the ACM Certificate to complete the deployment. Login to one of the email address under the #Setup section of this README and click the link provided in the email.
+Now you must accept the ACM Certificate to complete the deployment. Login to one of the email address and click the link provided.
 
 Afterwards the expected result should be similar to:
 
@@ -64,7 +54,7 @@ Serverless: Stack update finished…
 
 Service Information
 service: serverless-simple-http-endpoint
-stage: dev
+stage: prod
 region: us-east-1
 api keys:
   None
@@ -77,20 +67,17 @@ functions:
 After this step your S3 bucket and CloudFront distribution is setup. Now you need to upload your static file e.g. `index.html` and `app.js` to S3. You can do this by running
 
 ```bash
-aws s3 sync app/ s3://your_domain_name-com-stage
+sls s3sync
 ```
+
+Note: All files within the folder provided under `appDirectory` in `env.json` will be synced to your s3.
 
 The expected result should be similar to
 
 ```bash
-upload: app/index.html to s3://your_domain_name-com-stage/index.html
-upload: app/app.js to s3://your_domain_name-com-stage/app.js
+S3 Sync: Syncing directories and S3 prefixes...
+....
+S3 Sync: Synced.
 ```
 
-Now you just need to go to your domain. You can use the AWS Console UI or run to view it
-
-```bash
-sls info --verbose
-```
-
-- Built on <a href="https://github.com/serverless/examples/tree/master/aws-node-single-page-app-via-cloudfront">Single Page Application</a>
+Now go to your_domain_name.com in your web browser. All done!
